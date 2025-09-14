@@ -12,48 +12,60 @@ interface LevelSelectorProps {
 export function LevelSelector({ levels, onLevelSelect }: LevelSelectorProps) {
   const getDifficultyColor = (levelName: string) => {
     switch (levelName.toLowerCase()) {
-      case 'easy': return 'from-green-400 to-emerald-500';
-      case 'medium': return 'from-yellow-400 to-orange-500';
-      case 'hard': return 'from-red-400 to-pink-500';
-      default: return 'from-blue-400 to-purple-500';
+      case "easy":
+        return "from-green-400 to-emerald-500";
+      case "medium":
+        return "from-yellow-400 to-orange-500";
+      case "hard":
+        return "from-red-400 to-pink-500";
+      default:
+        return "from-blue-400 to-purple-500";
     }
   };
 
   const getEstimatedTime = (pairs: number) => {
-    if (pairs <= 35) return '2-5 min';
-    if (pairs <= 55) return '5-10 min';
-    return '10-20 min';
+    if (pairs <= 12) return "1-3 min";
+    if (pairs <= 18) return "2-5 min";
+    return "3-8 min";
   };
 
   return (
     <div className="text-center space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-white mb-4">Choose Your Challenge</h2>
-        <p className="text-white/80">Select a difficulty level to begin your memory challenge</p>
+        <h2 className="text-3xl font-bold text-white mb-4">
+          Choose Your Challenge
+        </h2>
+        <p className="text-white/80">
+          Select a difficulty level to begin your memory challenge
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         {levels.map((level, index) => (
-          <Card 
-            key={index} 
+          <Card
+            key={index}
             className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105 cursor-pointer group"
             onClick={() => onLevelSelect(level)}
           >
             <CardHeader className="text-center pb-4">
-              <div className={`w-16 h-16 mx-auto rounded-full bg-gradient-to-br ${getDifficultyColor(level.name)} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+              <div
+                className={`w-16 h-16 mx-auto rounded-full bg-gradient-to-br ${getDifficultyColor(
+                  level.name
+                )} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+              >
                 <Grid className="w-8 h-8 text-white" />
               </div>
               <CardTitle className="text-2xl font-bold text-white">
                 {level.name}
               </CardTitle>
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className="bg-white/20 border-white/30 text-white w-fit mx-auto"
               >
                 {level.size} × {level.size}
               </Badge>
             </CardHeader>
-            
+
             <CardContent className="text-center space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm text-white/80">
                 <div className="flex items-center justify-center gap-2">
@@ -65,9 +77,11 @@ export function LevelSelector({ levels, onLevelSelect }: LevelSelectorProps) {
                   <span>{getEstimatedTime(level.pairs)}</span>
                 </div>
               </div>
-              
-              <Button 
-                className={`w-full bg-gradient-to-r ${getDifficultyColor(level.name)} hover:opacity-90 text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}
+
+              <Button
+                className={`w-full bg-gradient-to-r ${getDifficultyColor(
+                  level.name
+                )} hover:opacity-90 text-white font-semibold transition-all duration-300 group-hover:shadow-lg`}
                 size="lg"
               >
                 Play {level.name}
@@ -75,16 +89,6 @@ export function LevelSelector({ levels, onLevelSelect }: LevelSelectorProps) {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      <div className="mt-8 p-4 bg-white/5 rounded-lg border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-2">How to Play</h3>
-        <ul className="text-white/80 text-sm space-y-1 text-left max-w-md mx-auto">
-          <li>• Click on tiles to flip them over</li>
-          <li>• Find matching pairs of symbols</li>
-          <li>• Match all pairs to complete the level</li>
-          <li>• Try to finish with fewer moves and faster time!</li>
-        </ul>
       </div>
     </div>
   );

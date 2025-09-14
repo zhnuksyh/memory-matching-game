@@ -8,19 +8,21 @@ interface GameStatsProps {
   matchedPairs: number;
   totalPairs: number;
   gameState: string;
+  score: number;
 }
 
-export function GameStats({ 
-  moves, 
-  timeElapsed, 
-  matchedPairs, 
-  totalPairs, 
-  gameState 
+export function GameStats({
+  moves,
+  timeElapsed,
+  matchedPairs,
+  totalPairs,
+  gameState,
+  score,
 }: GameStatsProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const getProgressPercentage = () => {
@@ -49,9 +51,7 @@ export function GameStats({
             <MousePointer className="w-5 h-5 text-green-400 mr-2" />
             <span className="text-sm font-medium text-white/80">Moves</span>
           </div>
-          <div className="text-2xl font-bold text-white">
-            {moves}
-          </div>
+          <div className="text-2xl font-bold text-white">{moves}</div>
         </CardContent>
       </Card>
 
@@ -66,7 +66,7 @@ export function GameStats({
             {matchedPairs}/{totalPairs}
           </div>
           <div className="w-full bg-white/20 rounded-full h-2 mt-2">
-            <div 
+            <div
               className="bg-gradient-to-r from-purple-400 to-pink-400 h-2 rounded-full transition-all duration-500"
               style={{ width: `${getProgressPercentage()}%` }}
             />
@@ -81,9 +81,7 @@ export function GameStats({
             <Trophy className="w-5 h-5 text-yellow-400 mr-2" />
             <span className="text-sm font-medium text-white/80">Score</span>
           </div>
-          <div className="text-2xl font-bold text-white">
-            {Math.max(0, 10000 - (moves * 50) - (timeElapsed * 10))}
-          </div>
+          <div className="text-2xl font-bold text-white">{score}</div>
         </CardContent>
       </Card>
     </div>

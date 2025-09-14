@@ -24,6 +24,7 @@ interface MemoryGameState {
   startTime: number | null;
   isGameActive: boolean;
   showHighScores: boolean;
+  score: number;
 
   // Actions
   setLevel: (level: GameLevel) => void;
@@ -42,7 +43,7 @@ export const useMemoryGame = create<MemoryGameState>()(
 
     const startTimer = () => {
       if (gameTimer) clearInterval(gameTimer);
-      
+
       gameTimer = setInterval(() => {
         const { isGameActive, startTime, gameState } = get();
         if (isGameActive && startTime && gameState === "playing") {
@@ -59,22 +60,27 @@ export const useMemoryGame = create<MemoryGameState>()(
       }
     };
 
-    const saveHighScore = (level: GameLevel, moves: number, timeElapsed: number) => {
-      const score = Math.max(0, 10000 - (moves * 50) - (timeElapsed * 10));
+    const saveHighScore = (
+      level: GameLevel,
+      moves: number,
+      timeElapsed: number,
+      finalScore: number
+    ) => {
       const newScore: HighScore = {
-        score,
+        score: finalScore,
         moves,
         time: timeElapsed,
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
       };
 
-      const existingScores: HighScore[] = getLocalStorage(`highScores_${level.name}`) || [];
+      const existingScores: HighScore[] =
+        getLocalStorage(`highScores_${level.name}`) || [];
       existingScores.push(newScore);
-      
+
       // Sort by score (highest first) and keep top 10
       existingScores.sort((a, b) => b.score - a.score);
       const topScores = existingScores.slice(0, 10);
-      
+
       setLocalStorage(`highScores_${level.name}`, topScores);
     };
 
@@ -89,6 +95,7 @@ export const useMemoryGame = create<MemoryGameState>()(
       startTime: null,
       isGameActive: false,
       showHighScores: false,
+      score: 0,
 
       setLevel: (level) => set({ currentLevel: level }),
 
@@ -103,7 +110,8 @@ export const useMemoryGame = create<MemoryGameState>()(
           moves: 0,
           timeElapsed: 0,
           startTime: null,
-          isGameActive: false
+          isGameActive: false,
+          score: 0,
         });
       },
 
@@ -113,7 +121,7 @@ export const useMemoryGame = create<MemoryGameState>()(
           gameState: "playing",
           startTime,
           isGameActive: true,
-          timeElapsed: 0
+          timeElapsed: 0,
         });
         startTimer();
       },
@@ -125,10 +133,10 @@ export const useMemoryGame = create<MemoryGameState>()(
 
       resumeGame: () => {
         const { startTime, timeElapsed } = get();
-        const newStartTime = Date.now() - (timeElapsed * 1000);
+        const newStartTime = Date.now() - timeElapsed * 1000;
         set({
           isGameActive: true,
-          startTime: newStartTime
+          startTime: newStartTime,
         });
         startTimer();
       },
@@ -142,23 +150,35 @@ export const useMemoryGame = create<MemoryGameState>()(
           moves: 0,
           timeElapsed: 0,
           startTime: null,
-          isGameActive: false
+          isGameActive: false,
+          score: 0,
         });
       },
 
       flipTile: (index) => {
-        const { flippedTiles, matchedTiles, moves, tiles, currentLevel } = get();
+        const {
+          flippedTiles,
+          matchedTiles,
+          moves,
+          tiles,
+          currentLevel,
+          score,
+        } = get();
 
-        if (flippedTiles.length >= 2 || flippedTiles.includes(index) || matchedTiles.includes(index)) {
+        if (
+          flippedTiles.length >= 2 ||
+          flippedTiles.includes(index) ||
+          matchedTiles.includes(index)
+        ) {
           return;
         }
 
         const newFlippedTiles = [...flippedTiles, index];
         const newMoves = moves + 1;
 
-        set({ 
-          flippedTiles: newFlippedTiles, 
-          moves: newMoves 
+        set({
+          flippedTiles: newFlippedTiles,
+          moves: newMoves,
         });
 
         if (newFlippedTiles.length === 2) {
@@ -168,43 +188,54 @@ export const useMemoryGame = create<MemoryGameState>()(
 
           setTimeout(() => {
             if (firstTile.pairId === secondTile.pairId) {
-              // Match found
-              const newMatchedTiles = [...matchedTiles, firstIndex, secondIndex];
+              // Match found - add 30 points
+              const newMatchedTiles = [
+                ...matchedTiles,
+                firstIndex,
+                secondIndex,
+              ];
+              const newScore = score + 30;
+
               set({
                 matchedTiles: newMatchedTiles,
-                flippedTiles: []
+                flippedTiles: [],
+                score: newScore,
               });
 
               // Check if game is completed
               if (newMatchedTiles.length === tiles.length) {
                 stopTimer();
                 const { timeElapsed } = get();
-                
+
                 if (currentLevel) {
-                  saveHighScore(currentLevel, newMoves, timeElapsed);
+                  saveHighScore(currentLevel, newMoves, timeElapsed, newScore);
                 }
-                
-                set({ 
+
+                set({
                   gameState: "completed",
-                  isGameActive: false 
+                  isGameActive: false,
                 });
               }
             } else {
-              // No match, flip back
-              set({ flippedTiles: [] });
+              // No match - deduct 5 points (but not below 0)
+              const newScore = Math.max(0, score - 5);
+              set({
+                flippedTiles: [],
+                score: newScore,
+              });
             }
           }, 1000);
         }
       },
 
-      setShowHighScores: (show) => set({ showHighScores: show })
+      setShowHighScores: (show) => set({ showHighScores: show }),
     };
   })
 );
 
 // Cleanup timer when store is destroyed
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     // Timer cleanup is handled in the store methods
   });
 }

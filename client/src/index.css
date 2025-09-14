@@ -68,7 +68,8 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
+    overflow-x: hidden;
   }
 
   html {

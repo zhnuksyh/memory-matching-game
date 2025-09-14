@@ -1,12 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GameTile } from "./GameTile";
 import { GameStats } from "./GameStats";
+import { GameMenu } from "./GameMenu";
+import { VictoryModal } from "./VictoryModal";
 import { useMemoryGame } from "../lib/stores/useMemoryGame";
 import { generateGameBoard } from "../lib/gameUtils";
 import { GameLevel } from "../App";
 import { useAudio } from "../lib/stores/useAudio";
 import { Button } from "./ui/button";
-import { RotateCcw, Pause, Play } from "lucide-react";
+import { RotateCcw, Pause, Play, Menu, ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import gsap from "gsap";
@@ -14,9 +16,16 @@ import gsap from "gsap";
 interface MemoryGameProps {
   level: GameLevel;
   onComplete: () => void;
+  onMainMenu: () => void;
+  onHighScores: () => void;
 }
 
-export function MemoryGame({ level, onComplete }: MemoryGameProps) {
+export function MemoryGame({
+  level,
+  onComplete,
+  onMainMenu,
+  onHighScores,
+}: MemoryGameProps) {
   const {
     gameState,
     tiles,
@@ -30,36 +39,65 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
     pauseGame,
     resumeGame,
     flipTile,
-    initializeGame
+    initializeGame,
+    score,
   } = useMemoryGame();
 
   const { playHit, playSuccess } = useAudio();
   const gameContainerRef = useRef<HTMLDivElement>(null);
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [isReturningFromHighScores, setIsReturningFromHighScores] =
+    useState(false);
 
-  // Initialize game when level changes
+  // Initialize game when level changes (but only if game is not already in progress)
   useEffect(() => {
-    const gameBoard = generateGameBoard(level.pairs);
-    initializeGame(gameBoard, level);
-  }, [level, initializeGame]);
+    if (
+      gameState === "ready" &&
+      tiles.length === 0 &&
+      !isReturningFromHighScores
+    ) {
+      const gameBoard = generateGameBoard(level.pairs);
+      initializeGame(gameBoard, level);
+    }
+  }, [
+    level,
+    initializeGame,
+    gameState,
+    tiles.length,
+    isReturningFromHighScores,
+  ]);
+
+  // Detect when returning from high scores
+  useEffect(() => {
+    if (gameState === "playing" && tiles.length > 0) {
+      setIsReturningFromHighScores(true);
+      // Reset the flag after a short delay
+      const timer = setTimeout(() => {
+        setIsReturningFromHighScores(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, tiles.length]);
 
   // Start game animation
   useEffect(() => {
     if (gameState === "playing" && gameContainerRef.current) {
-      const tiles = gameContainerRef.current.querySelectorAll('.game-tile');
-      
-      gsap.fromTo(tiles, 
-        { 
-          scale: 0, 
+      const tiles = gameContainerRef.current.querySelectorAll(".game-tile");
+
+      gsap.fromTo(
+        tiles,
+        {
+          scale: 0,
           rotation: 180,
-          opacity: 0 
+          opacity: 0,
         },
-        { 
-          scale: 1, 
+        {
+          scale: 1,
           rotation: 0,
           opacity: 1,
           duration: 0.6,
           stagger: 0.05,
-          ease: "back.out(1.7)"
+          ease: "back.out(1.7)",
         }
       );
     }
@@ -69,29 +107,30 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
   useEffect(() => {
     if (matchedTiles.length === tiles.length && tiles.length > 0) {
       playSuccess();
-      
+
       // Celebration animation
       if (gameContainerRef.current) {
-        const tileElements = gameContainerRef.current.querySelectorAll('.game-tile');
+        const tileElements =
+          gameContainerRef.current.querySelectorAll(".game-tile");
         gsap.to(tileElements, {
           scale: 1.1,
           duration: 0.3,
           yoyo: true,
           repeat: 1,
-          stagger: 0.02
+          stagger: 0.02,
         });
       }
-      
+
       setTimeout(() => {
-        onComplete();
+        setShowVictoryModal(true);
       }, 2000);
     }
-  }, [matchedTiles.length, tiles.length, playSuccess, onComplete]);
+  }, [matchedTiles.length, tiles.length, playSuccess]);
 
   const handleTileClick = (index: number) => {
     if (
-      flippedTiles.length >= 2 || 
-      flippedTiles.includes(index) || 
+      flippedTiles.length >= 2 ||
+      flippedTiles.includes(index) ||
       matchedTiles.includes(index) ||
       gameState !== "playing"
     ) {
@@ -120,33 +159,56 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
     }
   };
 
-  const gridCols = level.size === 8 ? 'grid-cols-8' : 
-                   level.size === 10 ? 'grid-cols-10' : 'grid-cols-12';
+  const handleVictoryModalClose = () => {
+    setShowVictoryModal(false);
+    onComplete();
+  };
+
+  const handlePlayAgain = () => {
+    setShowVictoryModal(false);
+    handleResetGame();
+  };
+
+  const getCurrentScore = () => {
+    return score;
+  };
+
+  const gridCols =
+    level.size === 5
+      ? "grid-cols-5"
+      : level.size === 6
+      ? "grid-cols-6"
+      : "grid-cols-8";
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl mx-auto space-y-4 h-full flex flex-col">
       {/* Game Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Badge variant="outline" className="bg-white/20 border-white/30 text-white">
+          <Button
+            onClick={onMainMenu}
+            variant="outline"
+            size="sm"
+            className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Menu
+          </Button>
+          <Badge
+            variant="outline"
+            className="bg-white/20 border-white/30 text-white"
+          >
             {level.name} - {level.size}×{level.size}
           </Badge>
-          <Badge variant="outline" className="bg-white/20 border-white/30 text-white">
+          <Badge
+            variant="outline"
+            className="bg-white/20 border-white/30 text-white"
+          >
             {level.pairs} Pairs
           </Badge>
         </div>
-        
+
         <div className="flex gap-2">
-          {gameState === "playing" && (
-            <Button
-              onClick={handlePauseResume}
-              variant="outline"
-              size="sm"
-              className="bg-white/20 border-white/30 text-white hover:bg-white/30"
-            >
-              {isGameActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </Button>
-          )}
           <Button
             onClick={handleResetGame}
             variant="outline"
@@ -155,16 +217,26 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
           >
             <RotateCcw className="w-4 h-4" />
           </Button>
+          {gameState !== "ready" && (
+            <GameMenu
+              isGameActive={isGameActive}
+              onMainMenu={onMainMenu}
+              onHighScores={onHighScores}
+              onPauseResume={handlePauseResume}
+              onAutoPause={pauseGame}
+            />
+          )}
         </div>
       </div>
 
       {/* Game Stats */}
-      <GameStats 
+      <GameStats
         moves={moves}
         timeElapsed={timeElapsed}
         matchedPairs={matchedTiles.length / 2}
         totalPairs={level.pairs}
         gameState={gameState}
+        score={score}
       />
 
       {/* Start Screen */}
@@ -175,7 +247,8 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
               Ready to play {level.name} level?
             </h3>
             <p className="text-white/80 mb-6">
-              Find all {level.pairs} matching pairs in the {level.size}×{level.size} grid!
+              Find all {level.pairs} matching pairs in the {level.size}×
+              {level.size} grid!
             </p>
             <Button
               onClick={handleStartGame}
@@ -192,27 +265,13 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
       {/* Game Board */}
       {gameState !== "ready" && (
         <div className="relative">
-          {/* Pause Overlay */}
-          {!isGameActive && gameState === "playing" && (
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-              <Card className="bg-white/90">
-                <CardContent className="text-center p-6">
-                  <h3 className="text-xl font-bold mb-4">Game Paused</h3>
-                  <Button onClick={handlePauseResume}>
-                    <Play className="w-4 h-4 mr-2" />
-                    Resume
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <div 
+          <div
             ref={gameContainerRef}
-            className={`grid ${gridCols} gap-2 p-4 bg-white/5 rounded-lg backdrop-blur-sm`}
+            className={`grid ${gridCols} gap-1 p-2 bg-white/5 rounded-lg backdrop-blur-sm`}
             style={{
-              aspectRatio: '1',
-              maxHeight: '70vh'
+              aspectRatio: "1",
+              maxHeight: "60vh",
+              maxWidth: "100%",
             }}
           >
             {tiles.map((tile, index) => (
@@ -220,7 +279,9 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
                 key={index}
                 tile={tile}
                 index={index}
-                isFlipped={flippedTiles.includes(index) || matchedTiles.includes(index)}
+                isFlipped={
+                  flippedTiles.includes(index) || matchedTiles.includes(index)
+                }
                 isMatched={matchedTiles.includes(index)}
                 onClick={() => handleTileClick(index)}
                 disabled={!isGameActive}
@@ -230,19 +291,19 @@ export function MemoryGame({ level, onComplete }: MemoryGameProps) {
         </div>
       )}
 
-      {/* Victory Message */}
-      {gameState === "completed" && (
-        <Card className="bg-gradient-to-r from-green-400/20 to-blue-500/20 backdrop-blur-sm border-green-400/30">
-          <CardContent className="text-center p-6">
-            <h3 className="text-2xl font-bold text-white mb-2">
-              🎉 Congratulations! 🎉
-            </h3>
-            <p className="text-white/80">
-              You completed the {level.name} level in {moves} moves and {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}!
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Victory Modal */}
+      <VictoryModal
+        isOpen={showVictoryModal}
+        onClose={handleVictoryModalClose}
+        onMainMenu={onMainMenu}
+        onPlayAgain={handlePlayAgain}
+        level={level}
+        stats={{
+          moves,
+          timeElapsed,
+          score: getCurrentScore(),
+        }}
+      />
     </div>
   );
 }
